@@ -1,2 +1,4 @@
 # options
 options research
+
+checkmate
