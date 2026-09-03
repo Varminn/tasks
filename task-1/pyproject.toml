@@ -1,0 +1,19 @@
+[project]
+name = "mcp-assessment-server"
+version = "0.1.0"
+description = "MCP server with strict validation and stdio transport"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+mcp-assessment-server = "mcp_assessment_server.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
