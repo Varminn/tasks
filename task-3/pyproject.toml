@@ -1,0 +1,20 @@
+[project]
+name = "llm-gateway"
+version = "0.1.0"
+description = "LLM Gateway with streaming PII redaction"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27.0",
+    "uvicorn>=0.30.0",
+    "starlette>=0.37.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
+
+[project.scripts]
+llm-gateway = "llm_gateway.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
