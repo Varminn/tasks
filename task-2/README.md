@@ -7,7 +7,7 @@ A lightweight HTTP/JSON-RPC reverse proxy in Python that sits between an AI agen
 ```
 AI Agent Client ──HTTP POST /rpc──▶ MCP Gateway ──▶ Downstream MCP Server
                                       │
-                                      ├─ Parses Bearer token → extracts role
+                                      ├─ Verifies Bearer JWT → extracts role
                                       ├─ tools/list → forward transparently
                                       ├─ tools/call (non-admin tool) → forward
                                       └─ tools/call (admin_* tool + non-admin) → return -32001
@@ -15,7 +15,10 @@ AI Agent Client ──HTTP POST /rpc──▶ MCP Gateway ──▶ Downstream M
 
 ## Auth Model
 
-Tokens are parsed from the `Authorization: Bearer <token>` header. Supports both JWT (three base64url segments with a `role` claim in the payload) and simple base64-encoded JSON tokens (e.g., `{"role": "admin"}`).
+Tokens are HS256 JWTs from the `Authorization: Bearer <token>` header. The
+gateway verifies the signature and requires an unexpired `exp` claim before
+reading the `role` claim. This prevents callers from forging an `admin` role
+by modifying an unsigned token payload.
 
 | Role | Regular tools | `admin_*` tools |
 |------|--------------|-----------------|
@@ -28,16 +31,17 @@ Tokens are parsed from the `Authorization: Bearer <token>` header. Supports both
 cd task-2
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install ".[dev]"
 ```
 
 ## Running
 
 ```bash
+export MCP_GATEWAY_JWT_SIGNING_KEY='replace-with-a-long-random-secret'
 python -m mcp_gateway.main http://localhost:3001/rpc
 ```
 
-The gateway listens on `http://localhost:3000/rpc` and forwards to the downstream URL provided as the first argument.
+The gateway listens on `http://localhost:3000/rpc` and forwards to the downstream URL provided as the first argument. It fails closed if `MCP_GATEWAY_JWT_SIGNING_KEY` is not configured.
 
 ## Testing
 

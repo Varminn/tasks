@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local assessment materials and runtime artifacts
+/.agents/
+/docs/
+.DS_Store
+*.db
+*.sqlite
+*.sqlite3

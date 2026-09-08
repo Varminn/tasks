@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 
@@ -51,6 +52,14 @@ class TestModelRouter:
         assert result == {"response": "Fallback!"}
 
     @pytest.mark.anyio
+    async def test_primary_500_fails_over(self, limiter):
+        primary = MockProvider("primary", CompletionResponse(status=500, error="upstream failure"))
+        fallback = MockProvider("fallback", CompletionResponse(status=200, text="Fallback!"))
+        router = ModelRouter(primary, fallback, limiter)
+        result = await router.route("key1", "test", "model", 100)
+        assert result == {"response": "Fallback!"}
+
+    @pytest.mark.anyio
     async def test_both_fail_returns_sanitized_error(self, limiter):
         primary = MockProvider("primary", CompletionResponse(status=500, error="Internal traceback details"))
         fallback = MockProvider("fallback", CompletionResponse(status=500, error="stack_trace_here"))
@@ -85,3 +94,38 @@ class TestModelRouter:
 
         result2 = await router.route("key2", "test", "model", 100)
         assert result2 == {"response": "ok"}
+
+    @pytest.mark.anyio
+    async def test_concurrent_requests_cannot_exceed_token_limit(self):
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as file:
+            path = file.name
+        limiter = RateLimiter(path, max_tokens_per_window=1000, window_seconds=60)
+        primary = MockProvider("primary", CompletionResponse(status=200, text="ok"))
+        fallback = MockProvider("fallback", CompletionResponse(status=500))
+        router = ModelRouter(primary, fallback, limiter)
+
+        try:
+            results = await asyncio.gather(
+                *(router.route("key1", "test", "model", 100) for _ in range(20))
+            )
+        finally:
+            limiter.close()
+            os.unlink(path)
+
+        assert sum(result == {"response": "ok"} for result in results) == 10
+        assert sum(result.get("error", {}).get("code") == 429 for result in results) == 10
+
+    @pytest.mark.anyio
+    async def test_negative_token_count_returns_sanitized_client_error(self, limiter):
+        primary = MockProvider("primary", CompletionResponse(status=200, text="ok"))
+        fallback = MockProvider("fallback", CompletionResponse(status=500))
+        router = ModelRouter(primary, fallback, limiter)
+
+        result = await router.route("key1", "test", "model", -1)
+        assert result == {
+            "error": {
+                "code": 400,
+                "message": "estimated_tokens must be a positive integer.",
+                "type": "gateway_error",
+            }
+        }

@@ -31,10 +31,15 @@ class ModelProvider:
                     json={"model": model, "messages": [{"role": "user", "content": prompt}]},
                 )
                 if response.status_code == 200:
-                    data = response.json()
-                    text = data.get("choices", [{}])[0].get("message", {}).get("content")
+                    try:
+                        data = response.json()
+                        text = data["choices"][0]["message"]["content"]
+                    except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+                        return CompletionResponse(status=502, error="invalid_provider_response")
+                    if not isinstance(text, str):
+                        return CompletionResponse(status=502, error="invalid_provider_response")
                     return CompletionResponse(status=200, text=text)
-                return CompletionResponse(status=response.status_code, error=response.text)
+                return CompletionResponse(status=response.status_code, error=f"http_{response.status_code}")
         except httpx.TimeoutException:
             return CompletionResponse(status=408, error="timeout")
         except httpx.RequestError:

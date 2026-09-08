@@ -1,0 +1,29 @@
+name: Validate assessment tasks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.task }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [task-1, task-2, task-3, task-4]
+    defaults:
+      run:
+        working-directory: ${{ matrix.task }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install ".[dev]"
+      - run: python -m pytest tests -v

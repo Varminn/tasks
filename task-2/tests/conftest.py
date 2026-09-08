@@ -11,6 +11,13 @@ class MockDownstreamHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers["Content-Length"])
         body = json.loads(self.rfile.read(content_length))
 
+        if body.get("method") == "invalid/json":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b"not-json")
+            return
+
         if body.get("method") == "tools/list":
             result = {"tools": [{"name": "get_customer_record"}, {"name": "admin_reset_key"}]}
         elif body.get("method") == "tools/call":

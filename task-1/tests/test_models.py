@@ -36,11 +36,11 @@ class TestRefundRequest:
         assert req.amount == 50.0
 
     def test_zero_amount_rejected(self):
-        with pytest.raises(ValidationError, match="positive"):
+        with pytest.raises(ValidationError, match="greater than 0"):
             RefundRequest(customer_id="CUST-00001", amount=0.0, reason="Product returned unused")
 
     def test_negative_amount_rejected(self):
-        with pytest.raises(ValidationError, match="positive"):
+        with pytest.raises(ValidationError, match="greater than 0"):
             RefundRequest(customer_id="CUST-00001", amount=-10.0, reason="Product returned unused")
 
     def test_nan_amount_rejected(self):

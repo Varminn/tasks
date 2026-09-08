@@ -40,6 +40,26 @@ class TestStreamRedactor:
         assert "alice@example.com" not in full
         assert "[REDACTED]" in full
 
+    def test_long_email_local_part_never_leaks_a_prefix(self):
+        r = StreamRedactor()
+        email = "a" * 50 + "@example.com"
+        out1 = r.feed("Contact " + email[:50])
+        out2 = r.feed(email[50:])
+        out3 = r.flush()
+        full = out1 + out2 + out3
+        assert full == "Contact [REDACTED]"
+        assert "a" * 10 not in full
+
+    def test_overlong_email_candidate_is_redacted_with_bounded_state(self):
+        r = StreamRedactor()
+        out1 = r.feed("a" * 65)
+        out2 = r.feed("@example.com")
+        out3 = r.flush()
+        full = out1 + out2 + out3
+        assert full == "[REDACTED]"
+        assert len(r._buffer) == 0
+        assert len(r._email_candidate) == 0
+
     def test_cross_chunk_ssn(self):
         r = StreamRedactor()
         out1 = r.feed("SSN is 123-45-")

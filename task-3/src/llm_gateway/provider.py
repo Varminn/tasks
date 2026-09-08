@@ -2,6 +2,11 @@ import json
 
 import httpx
 from collections.abc import AsyncIterator
+from typing import Protocol
+
+
+class StreamingProvider(Protocol):
+    def stream(self, prompt: str, model: str) -> AsyncIterator[str]: ...
 
 
 class MockProvider:

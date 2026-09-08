@@ -31,6 +31,14 @@ class TestRateLimiter:
         assert used == 600
         assert remaining == 400
 
+    def test_rejects_non_positive_token_counts(self, db_path):
+        limiter = RateLimiter(db_path, max_tokens_per_window=1000, window_seconds=60)
+        with pytest.raises(ValueError, match="positive integer"):
+            limiter.check_and_record("key1", 0)
+        with pytest.raises(ValueError, match="positive integer"):
+            limiter.check_and_record("key1", -1)
+        assert limiter.get_usage("key1") == 0
+
     def test_exact_limit_boundary(self, db_path):
         limiter = RateLimiter(db_path, max_tokens_per_window=1000, window_seconds=60)
         limiter.check_and_record("key1", 999)
@@ -52,6 +60,7 @@ class TestRateLimiter:
         limiter._conn.commit()
         allowed, _, _ = limiter.check_and_record("key1", 500)
         assert allowed is True
+        assert limiter.evict_expired() == 0
 
     def test_evict_expired(self, db_path):
         limiter = RateLimiter(db_path, max_tokens_per_window=1000, window_seconds=60)

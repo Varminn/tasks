@@ -4,6 +4,15 @@ import pytest
 from llm_gateway.main import create_app
 
 
+class RecordingProvider:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def stream(self, prompt: str, model: str):
+        self.calls.append((prompt, model))
+        yield "Provider response for alice@example.com"
+
+
 @pytest.fixture
 async def client():
     app = create_app()
@@ -65,3 +74,34 @@ class TestStreamingIntegration:
                 full = b"".join(chunks).decode()
                 assert "chunk1" in full
                 assert "chunk3" in full
+
+    @pytest.mark.anyio
+    async def test_configured_provider_is_used_without_mock_chunks(self):
+        provider = RecordingProvider()
+        app = create_app(provider=provider, default_model="configured-model")
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/v1/completions",
+                json={"prompt": "Use the configured provider", "model": "requested-model"},
+            )
+
+        assert response.status_code == 200
+        assert "alice@example.com" not in response.text
+        assert "[REDACTED]" in response.text
+        assert provider.calls == [("Use the configured provider", "requested-model")]
+
+    @pytest.mark.anyio
+    async def test_mock_chunks_override_a_configured_provider(self):
+        provider = RecordingProvider()
+        app = create_app(provider=provider)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.post(
+                "/v1/completions",
+                json={"prompt": "test", "mock_chunks": ["Deterministic response"]},
+            )
+
+        assert response.status_code == 200
+        assert response.text == "Deterministic response"
+        assert provider.calls == []

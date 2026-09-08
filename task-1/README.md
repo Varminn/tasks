@@ -1,6 +1,6 @@
 # Task 1: Custom MCP Server with Strict Validation & Transport Handling
 
-A Python MCP server using the official `mcp` SDK (FastMCP) with Pydantic v2 validation, stdio transport, and strict stdout isolation.
+A Python MCP server using the official `mcp` SDK v2 (`MCPServer`) with Pydantic v2 validation, stdio transport, and strict stdout isolation.
 
 ## Tools
 
@@ -15,7 +15,7 @@ A Python MCP server using the official `mcp` SDK (FastMCP) with Pydantic v2 vali
 cd task-1
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install ".[dev]"
 ```
 
 ## Running
@@ -34,4 +34,4 @@ pytest tests/ -v
 
 ## Architecture
 
-This server is designed as the downstream target for Task 2's MCP Gateway. It exposes two tools with strict Pydantic validation (`extra="forbid"`, custom field validators). Invalid input raises `ValueError`/`LookupError`, which FastMCP maps to standard JSON-RPC error responses.
+This server is designed as the downstream target for Task 2's MCP Gateway. It exposes two tools with strict Pydantic validation (`extra="forbid"`, strict field schemas, and custom validators). MCP v2 middleware validates `tools/call` arguments before dispatch and returns invalid arguments as the standard JSON-RPC `-32602` error; stdout remains reserved for JSON-RPC messages.
